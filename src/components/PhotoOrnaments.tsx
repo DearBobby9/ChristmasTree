@@ -5,8 +5,8 @@ import { shaderMaterial, Html, useCursor, useTexture } from '@react-three/drei'
 import { handTrackingStore } from './ArixTree'
 
 // Import photo assets
-import photo1 from '../assets/photos/1.JPG'
-import photo2 from '../assets/photos/2.JPG'
+import photo1 from '../assets/photos/1.jpg'
+import photo2 from '../assets/photos/2.jpg'
 import photo3 from '../assets/photos/3.png'
 import photo4 from '../assets/photos/4.jpg'
 import photo5 from '../assets/photos/5.jpg'
