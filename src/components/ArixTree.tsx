@@ -119,7 +119,7 @@ type Listener = (isFormed: boolean) => void
 const listeners: Set<Listener> = new Set()
 
 export const handTrackingStore = {
-    _isTreeFormed: false,
+    _isTreeFormed: true, // 默认凝聚状态
     rotation: [0, 0] as [number, number],
     manualOverrideUntil: 0,  // Timestamp until which hand tracking should be ignored
 

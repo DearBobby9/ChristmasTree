@@ -13,6 +13,8 @@ function App() {
   const [isLocked, setIsLocked] = useState(false)
   const [selectedOrnament, setSelectedOrnament] = useState<number | null>(null)
   const [focusedPhoto, setFocusedPhoto] = useState<number | null>(null)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isGestureEnabled, setIsGestureEnabled] = useState(false) // 手势控制开关，默认关闭
   const touchRef = useRef<{ startX: number; startY: number; lastX: number; lastY: number } | null>(null)
 
   // Detect mobile
@@ -127,8 +129,8 @@ function App() {
       onTouchEnd={handleTouchEnd}
       style={{ width: '100%', height: '100%' }}
     >
-      {/* Only show hand tracker on desktop */}
-      {!isMobile && <HandTracker />}
+      {/* Only show hand tracker on desktop when gesture is enabled */}
+      {!isMobile && isGestureEnabled && <HandTracker />}
 
       {/* Title Overlay */}
       <div style={{
@@ -176,57 +178,114 @@ function App() {
         </div>
       )}
 
-      {/* Control Buttons */}
+      {/* Collapsible Control Menu - Bottom Left Corner */}
       <div style={{
         position: 'absolute',
-        bottom: isMobile ? 40 : 30,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        bottom: isMobile ? 100 : 30,
+        left: isMobile ? 15 : 25,
         zIndex: 20,
-        display: 'flex',
-        gap: isMobile ? '15px' : '20px',
       }}>
+        {/* Menu Toggle Button */}
         <button
-          onClick={handleToggle}
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
           style={{
             ...buttonStyle,
-            background: isLocked
-              ? 'linear-gradient(135deg, rgba(80, 80, 80, 0.85), rgba(40, 40, 40, 0.95))'
-              : isFormed
-                ? 'linear-gradient(135deg, rgba(218, 165, 32, 0.85), rgba(184, 134, 11, 0.95))'
-                : 'linear-gradient(135deg, rgba(34, 139, 34, 0.85), rgba(0, 100, 0, 0.95))',
+            background: isMenuOpen
+              ? 'linear-gradient(135deg, rgba(218, 165, 32, 0.9), rgba(184, 134, 11, 0.95))'
+              : 'linear-gradient(135deg, rgba(60, 60, 70, 0.85), rgba(40, 40, 50, 0.95))',
             color: 'white',
-            opacity: isLocked ? 0.6 : 1,
-            cursor: isLocked ? 'not-allowed' : 'pointer',
+            width: isMobile ? '56px' : '52px',
+            height: isMobile ? '56px' : '52px',
+            padding: 0,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: isMobile ? '1.5rem' : '1.3rem',
+            boxShadow: isMenuOpen
+              ? '0 0 25px rgba(218, 165, 32, 0.5), 0 4px 20px rgba(0,0,0,0.4)'
+              : '0 4px 20px rgba(0,0,0,0.4)',
           }}
         >
-          {isLocked ? '🔒 锁定' : (isFormed ? '✨ 展开' : '🎄 凝聚')}
+          {isMenuOpen ? '✕' : '⚙️'}
         </button>
 
-        <button
-          onClick={handleLock}
-          style={{
-            ...buttonStyle,
-            background: isLocked
-              ? 'linear-gradient(135deg, rgba(220, 50, 50, 0.85), rgba(180, 20, 20, 0.95))'
-              : 'linear-gradient(135deg, rgba(100, 100, 100, 0.5), rgba(60, 60, 60, 0.6))',
-            minWidth: '60px',
-            padding: isMobile ? '14px' : '12px',
-          }}
-        >
-          {isLocked ? '🔓' : '🔒'}
-        </button>
+        {/* Expanded Menu */}
+        {isMenuOpen && (
+          <div style={{
+            position: 'absolute',
+            bottom: isMobile ? 70 : 65,
+            left: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            animation: 'fadeIn 0.2s ease-out',
+          }}>
+            {/* Toggle Tree State Button */}
+            <button
+              onClick={handleToggle}
+              style={{
+                ...buttonStyle,
+                background: isLocked
+                  ? 'linear-gradient(135deg, rgba(80, 80, 80, 0.85), rgba(40, 40, 40, 0.95))'
+                  : isFormed
+                    ? 'linear-gradient(135deg, rgba(218, 165, 32, 0.85), rgba(184, 134, 11, 0.95))'
+                    : 'linear-gradient(135deg, rgba(34, 139, 34, 0.85), rgba(0, 100, 0, 0.95))',
+                color: 'white',
+                opacity: isLocked ? 0.6 : 1,
+                cursor: isLocked ? 'not-allowed' : 'pointer',
+                minWidth: isMobile ? '120px' : '110px',
+              }}
+            >
+              {isLocked ? '🔒 锁定' : (isFormed ? '✨ 展开' : '🎄 凝聚')}
+            </button>
 
-        <button
-          onClick={handleReset}
-          style={{
-            ...buttonStyle,
-            background: 'linear-gradient(135deg, rgba(100, 100, 120, 0.85), rgba(60, 60, 80, 0.95))',
-            color: 'white',
-          }}
-        >
-          🔄 复位
-        </button>
+            {/* Lock Button */}
+            <button
+              onClick={handleLock}
+              style={{
+                ...buttonStyle,
+                background: isLocked
+                  ? 'linear-gradient(135deg, rgba(220, 50, 50, 0.85), rgba(180, 20, 20, 0.95))'
+                  : 'linear-gradient(135deg, rgba(100, 100, 100, 0.7), rgba(60, 60, 60, 0.8))',
+                color: 'white',
+                minWidth: isMobile ? '120px' : '110px',
+              }}
+            >
+              {isLocked ? '🔓 解锁' : '🔒 锁定'}
+            </button>
+
+            {/* Gesture Control Toggle - Desktop only */}
+            {!isMobile && (
+              <button
+                onClick={() => setIsGestureEnabled(!isGestureEnabled)}
+                style={{
+                  ...buttonStyle,
+                  background: isGestureEnabled
+                    ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.85), rgba(22, 163, 74, 0.95))'
+                    : 'linear-gradient(135deg, rgba(120, 120, 130, 0.85), rgba(80, 80, 90, 0.95))',
+                  color: 'white',
+                  minWidth: isMobile ? '120px' : '110px',
+                }}
+              >
+                {isGestureEnabled ? '👋 手势开' : '✋ 手势关'}
+              </button>
+            )}
+
+            {/* Reset Button */}
+            <button
+              onClick={handleReset}
+              style={{
+                ...buttonStyle,
+                background: 'linear-gradient(135deg, rgba(100, 100, 120, 0.85), rgba(60, 60, 80, 0.95))',
+                color: 'white',
+                minWidth: isMobile ? '120px' : '110px',
+              }}
+            >
+              🔄 复位
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Photo Navigation - Right side, only when scattered */}
