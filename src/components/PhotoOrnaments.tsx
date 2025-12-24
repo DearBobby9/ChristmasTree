@@ -1,8 +1,14 @@
 import { useRef, useState, useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame, extend } from '@react-three/fiber'
-import { shaderMaterial, Html, useCursor } from '@react-three/drei'
+import { shaderMaterial, Html, useCursor, useTexture } from '@react-three/drei'
 import { handTrackingStore } from './ArixTree'
+
+// Import photo assets
+import photo1 from '../assets/photos/1.JPG'
+import photo2 from '../assets/photos/2.JPG'
+import photo3 from '../assets/photos/3.png'
+import photo4 from '../assets/photos/4.jpg'
 
 const PARTICLES_PER_ORB = 400
 
@@ -94,11 +100,12 @@ interface OrbData {
     photoUrl: string | null
 }
 
-// 3 photo orbs orbiting at different heights with 120° spacing
+// 4 photo orbs orbiting at different heights with 90° spacing
 const orbs: OrbData[] = [
-    { id: 1, orbitRadius: 2.2, orbitHeight: 1.3, orbitPhase: 0, orbitSpeed: 0.3, color: '#ff6b9d', photoUrl: null },
-    { id: 2, orbitRadius: 2.0, orbitHeight: -0.2, orbitPhase: Math.PI * 2 / 3, orbitSpeed: 0.25, color: '#ffd93d', photoUrl: null },
-    { id: 3, orbitRadius: 2.3, orbitHeight: -1.5, orbitPhase: Math.PI * 4 / 3, orbitSpeed: 0.35, color: '#6bcbff', photoUrl: null },
+    { id: 1, orbitRadius: 2.2, orbitHeight: 1.3, orbitPhase: 0, orbitSpeed: 0.3, color: '#ff6b9d', photoUrl: photo1 },
+    { id: 2, orbitRadius: 2.0, orbitHeight: 0.3, orbitPhase: Math.PI / 2, orbitSpeed: 0.25, color: '#ffd93d', photoUrl: photo2 },
+    { id: 3, orbitRadius: 2.3, orbitHeight: -0.8, orbitPhase: Math.PI, orbitSpeed: 0.35, color: '#6bcbff', photoUrl: photo3 },
+    { id: 4, orbitRadius: 2.1, orbitHeight: -1.8, orbitPhase: Math.PI * 3 / 2, orbitSpeed: 0.28, color: '#a78bfa', photoUrl: photo4 },
 ]
 
 // Threshold for photo visibility (photos only show when morphProgress < this value)
@@ -119,6 +126,9 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
     const morphProgress = useRef(1)
     const [hovered, setHovered] = useState(false)
     useCursor(hovered && morphProgress.current < PHOTO_SHOW_THRESHOLD)
+
+    // Load photo texture
+    const texture = data.photoUrl ? useTexture(data.photoUrl) : null
 
     // Generate particle positions
     const { spherePositions, scatterPositions } = useMemo(() => {
@@ -277,6 +287,7 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
             >
                 <planeGeometry args={[1.2, 0.9]} />
                 <meshBasicMaterial
+                    map={texture}
                     color="#ffffff"
                     transparent
                     opacity={0}
