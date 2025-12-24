@@ -3,6 +3,7 @@ import { SceneContainer } from './components/SceneContainer'
 import { ArixTree, handTrackingStore } from './components/ArixTree'
 import { Sparkles } from './components/Sparkles'
 import { Snowfall } from './components/Snowfall'
+import { Countdown } from './components/Countdown'
 import { HandTracker } from './components/HandTracker'
 
 function App() {
@@ -110,6 +111,9 @@ function App() {
           Interactive Christmas Tree
         </p>
       </div>
+
+      {/* Christmas Countdown */}
+      <Countdown isMobile={isMobile} />
 
       {/* Mobile hint */}
       {isMobile && (
