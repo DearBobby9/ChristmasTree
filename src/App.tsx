@@ -146,7 +146,7 @@ function App() {
           fontSize: isMobile ? '1.5rem' : '2rem',
           textShadow: '0 2px 10px rgba(0,0,0,0.5)',
         }}>
-          ARIX SIGNATURE
+          Merry Christmas
         </h1>
         <p style={{
           color: 'white',
@@ -154,7 +154,7 @@ function App() {
           margin: 0,
           fontSize: isMobile ? '0.8rem' : '1rem',
         }}>
-          Interactive Christmas Tree
+          To my loved one
         </p>
       </div>
 
