@@ -52,21 +52,24 @@ A high-fidelity, luxury 3D interactive Christmas tree experience built with Reac
    cd ChristmasTree
    ```
 
-2. **Install Dependencies**:
+2. **One-Click Start** ⚡:
    ```bash
-   npm install
+   ./start.sh
    ```
+   > This script will automatically install dependencies (if needed) and start the dev server with browser auto-open.
 
-3. **Start Development Server**:
-   ```bash
-   npm run dev
-   ```
-
-4. **Open in Browser**:
-   Navigate to the URL shown in the terminal (usually `http://localhost:5173`).
-
-5. **Allow Camera Access**:
+3. **Allow Camera Access**:
    The app requires camera access to track your hand gestures.
+
+<details>
+<summary>Manual Start (Alternative)</summary>
+
+```bash
+npm install
+npm run dev
+```
+Navigate to `http://localhost:5173`
+</details>
 
 ## 🎮 Controls
 
