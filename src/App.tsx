@@ -5,10 +5,12 @@ import { Sparkles } from './components/Sparkles'
 import { Snowfall } from './components/Snowfall'
 import { Countdown } from './components/Countdown'
 import { HandTracker } from './components/HandTracker'
+import { PhotoOrnaments } from './components/PhotoOrnaments'
 
 function App() {
   const [isMobile, setIsMobile] = useState(false)
   const [isFormed, setIsFormed] = useState(false)
+  const [selectedOrnament, setSelectedOrnament] = useState<number | null>(null)
   const touchRef = useRef<{ startX: number; startY: number; lastX: number; lastY: number } | null>(null)
 
   // Detect mobile
@@ -48,18 +50,29 @@ function App() {
     touchRef.current = null
   }
 
+  // Sync with hand tracking store
+  useEffect(() => {
+    // Initial sync
+    setIsFormed(handTrackingStore.isTreeFormed)
+
+    // Subscribe to changes
+    const unsubscribe = handTrackingStore.subscribe((newState) => {
+      setIsFormed(newState)
+    })
+    return () => { unsubscribe() }
+  }, [])
+
   // Toggle between formed and scattered
   const handleToggle = () => {
-    const newState = !isFormed
-    setIsFormed(newState)
-    handTrackingStore.isTreeFormed = newState
+    // We only need to update the store, the subscription will update local state
+    handTrackingStore.isTreeFormed = !handTrackingStore.isTreeFormed
   }
 
   // Reset to default view
   const handleReset = () => {
     handTrackingStore.rotation = [0, 0]
     handTrackingStore.isTreeFormed = true
-    setIsFormed(true)
+    // No need to set isFormed manually, subscription handles it
   }
 
   const buttonStyle: React.CSSProperties = {
@@ -168,9 +181,89 @@ function App() {
 
       <SceneContainer>
         <ArixTree />
+        <PhotoOrnaments onSelectOrnament={setSelectedOrnament} />
         <Sparkles />
         <Snowfall />
       </SceneContainer>
+
+      {/* Photo Modal Overlay */}
+      {selectedOrnament && (
+        <div
+          onClick={() => setSelectedOrnament(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.98))',
+              borderRadius: '24px',
+              padding: '40px',
+              maxWidth: '500px',
+              width: '90%',
+              textAlign: 'center',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255, 215, 0, 0.2)',
+              border: '1px solid rgba(255, 215, 0, 0.3)',
+            }}
+          >
+            <div style={{
+              width: '200px',
+              height: '200px',
+              margin: '0 auto 24px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '4rem',
+              boxShadow: '0 0 40px rgba(255, 215, 0, 0.4)',
+            }}>
+              📸
+            </div>
+            <h2 style={{
+              color: 'gold',
+              fontFamily: 'serif',
+              fontSize: '1.8rem',
+              margin: '0 0 12px',
+            }}>
+              Memory #{selectedOrnament}
+            </h2>
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '1rem',
+              lineHeight: 1.6,
+              margin: '0 0 24px',
+            }}>
+              Add your photos to <code style={{ color: '#ffd93d' }}>src/assets/photos/</code> to display them here!
+            </p>
+            <button
+              onClick={() => setSelectedOrnament(null)}
+              style={{
+                padding: '12px 32px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, rgba(218, 165, 32, 0.9), rgba(184, 134, 11, 1))',
+                color: 'white',
+                boxShadow: '0 4px 20px rgba(218, 165, 32, 0.4)',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

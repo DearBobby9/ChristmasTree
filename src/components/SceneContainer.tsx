@@ -18,9 +18,13 @@ export function SceneContainer({ children }: SceneContainerProps) {
                 <color attach="background" args={['#001a0f']} />
 
                 {/* Lights */}
-                <ambientLight intensity={0.5} color="#004225" />
-                <pointLight position={[10, 10, 5]} intensity={2} color="#FFD700" />
-                <pointLight position={[-10, 5, -5]} intensity={1} color="#C5B358" />
+                <ambientLight intensity={0.4} color="#002815" />
+                <pointLight position={[10, 10, 5]} intensity={2.5} color="#FFD700" />
+                <pointLight position={[-10, 5, -5]} intensity={1.5} color="#C5B358" />
+
+                {/* Core light - emanating from tree center */}
+                <pointLight position={[0, 0, 0]} intensity={3} color="#FFE4B5" distance={8} decay={2} />
+                <pointLight position={[0, -2, 0]} intensity={2} color="#DAA520" distance={6} decay={2} />
 
                 {/* Environment - Cinematic / Luxury feel */}
                 <Environment preset="city" />
@@ -29,13 +33,13 @@ export function SceneContainer({ children }: SceneContainerProps) {
                     {children}
                 </Suspense>
 
-                {/* Post Processing - Cinematic Glow */}
+                {/* Post Processing - Enhanced Cinematic Glow */}
                 <EffectComposer>
                     <Bloom
-                        luminanceThreshold={0.5}
+                        luminanceThreshold={0.15}
                         mipmapBlur
-                        intensity={1.5}
-                        radius={0.6}
+                        intensity={2.8}
+                        radius={0.75}
                     />
                     <ToneMapping />
                 </EffectComposer>

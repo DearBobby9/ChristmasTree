@@ -6,5 +6,6 @@ declare module '@react-three/fiber' {
     interface ThreeElements {
         treeParticleMaterial: Object3DNode<THREE.ShaderMaterial, typeof THREE.ShaderMaterial>
         twinklingStarMaterial: Object3DNode<THREE.ShaderMaterial, typeof THREE.ShaderMaterial>
+        orbParticleMaterial: Object3DNode<THREE.ShaderMaterial, typeof THREE.ShaderMaterial>
     }
 }
