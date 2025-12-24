@@ -5,12 +5,14 @@ import { Sparkles } from './components/Sparkles'
 import { Snowfall } from './components/Snowfall'
 import { Countdown } from './components/Countdown'
 import { HandTracker } from './components/HandTracker'
-import { PhotoOrnaments } from './components/PhotoOrnaments'
+import { PhotoOrnaments, orbs, photoFocusStore } from './components/PhotoOrnaments'
 
 function App() {
   const [isMobile, setIsMobile] = useState(false)
   const [isFormed, setIsFormed] = useState(false)
+  const [isLocked, setIsLocked] = useState(false)
   const [selectedOrnament, setSelectedOrnament] = useState<number | null>(null)
+  const [focusedPhoto, setFocusedPhoto] = useState<number | null>(null)
   const touchRef = useRef<{ startX: number; startY: number; lastX: number; lastY: number } | null>(null)
 
   // Detect mobile
@@ -39,8 +41,11 @@ function App() {
     const deltaY = touch.clientY - touchRef.current.lastY
 
     // Update rotation based on touch movement
-    handTrackingStore.rotation[0] += deltaX * 0.02
-    handTrackingStore.rotation[1] += deltaY * 0.02
+    // SKIP if focused on a photo
+    if (photoFocusStore.focusedPhotoId === null || handTrackingStore.isTreeFormed) {
+      handTrackingStore.rotation[0] += deltaX * 0.02
+      handTrackingStore.rotation[1] += deltaY * 0.02
+    }
 
     touchRef.current.lastX = touch.clientX
     touchRef.current.lastY = touch.clientY
@@ -57,24 +62,50 @@ function App() {
 
     // Subscribe to changes
     const unsubscribe = handTrackingStore.subscribe((newState) => {
+
       setIsFormed(newState)
+      setIsLocked(handTrackingStore.isLocked)
+
+      // Clear photo focus when tree forms
+      if (newState === true) {
+        setFocusedPhoto(null)
+        photoFocusStore.setFocusedPhoto(null)
+      }
     })
     return () => { unsubscribe() }
   }, [])
 
   // Toggle between formed and scattered
   const handleToggle = () => {
+    // Set manual override to prevent hand tracking from immediately reversing
+    handTrackingStore.setManualOverride(2000)
+
     // We only need to update the store, the subscription will update local state
-    handTrackingStore.isTreeFormed = !handTrackingStore.isTreeFormed
+    if (!isLocked) {
+      const nextFormed = !handTrackingStore.isTreeFormed
+      if (nextFormed) {
+        setFocusedPhoto(null)
+        photoFocusStore.setFocusedPhoto(null)
+      }
+      handTrackingStore.isTreeFormed = nextFormed
+    }
   }
 
   // Reset to default view
   const handleReset = () => {
     handTrackingStore.rotation = [0, 0]
-    handTrackingStore.isTreeFormed = true
+    setFocusedPhoto(null)
+    photoFocusStore.setFocusedPhoto(null)
+    if (!isLocked) {
+      handTrackingStore.isTreeFormed = true
+    }
     // No need to set isFormed manually, subscription handles it
   }
 
+  const handleLock = () => {
+    const newLockedState = handTrackingStore.toggleLock()
+    setIsLocked(newLockedState)
+  }
   const buttonStyle: React.CSSProperties = {
     padding: isMobile ? '14px 28px' : '12px 24px',
     fontSize: isMobile ? '1.1rem' : '1rem',
@@ -159,14 +190,33 @@ function App() {
           onClick={handleToggle}
           style={{
             ...buttonStyle,
-            background: isFormed
-              ? 'linear-gradient(135deg, rgba(218, 165, 32, 0.85), rgba(184, 134, 11, 0.95))'
-              : 'linear-gradient(135deg, rgba(34, 139, 34, 0.85), rgba(0, 100, 0, 0.95))',
+            background: isLocked
+              ? 'linear-gradient(135deg, rgba(80, 80, 80, 0.85), rgba(40, 40, 40, 0.95))'
+              : isFormed
+                ? 'linear-gradient(135deg, rgba(218, 165, 32, 0.85), rgba(184, 134, 11, 0.95))'
+                : 'linear-gradient(135deg, rgba(34, 139, 34, 0.85), rgba(0, 100, 0, 0.95))',
             color: 'white',
+            opacity: isLocked ? 0.6 : 1,
+            cursor: isLocked ? 'not-allowed' : 'pointer',
           }}
         >
-          {isFormed ? '✨ 展开' : '🎄 凝聚'}
+          {isLocked ? '🔒 锁定' : (isFormed ? '✨ 展开' : '🎄 凝聚')}
         </button>
+
+        <button
+          onClick={handleLock}
+          style={{
+            ...buttonStyle,
+            background: isLocked
+              ? 'linear-gradient(135deg, rgba(220, 50, 50, 0.85), rgba(180, 20, 20, 0.95))'
+              : 'linear-gradient(135deg, rgba(100, 100, 100, 0.5), rgba(60, 60, 60, 0.6))',
+            minWidth: '60px',
+            padding: isMobile ? '14px' : '12px',
+          }}
+        >
+          {isLocked ? '🔓' : '🔒'}
+        </button>
+
         <button
           onClick={handleReset}
           style={{
@@ -179,6 +229,79 @@ function App() {
         </button>
       </div>
 
+      {/* Photo Navigation - Right side, only when scattered */}
+      {!isFormed && (
+        <div style={{
+          position: 'absolute',
+          right: isMobile ? 15 : 25,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}>
+          {orbs.map((orb) => (
+            <button
+              key={orb.id}
+              onClick={() => {
+                const newFocus = focusedPhoto === orb.id ? null : orb.id
+                setFocusedPhoto(newFocus)
+                photoFocusStore.setFocusedPhoto(newFocus)
+              }}
+              style={{
+                width: isMobile ? '50px' : '56px',
+                height: isMobile ? '50px' : '56px',
+                borderRadius: '50%',
+                border: focusedPhoto === orb.id ? '3px solid white' : '2px solid rgba(255,255,255,0.3)',
+                background: focusedPhoto === orb.id
+                  ? `linear-gradient(135deg, ${orb.color}, ${orb.color}dd)`
+                  : `linear-gradient(135deg, ${orb.color}80, ${orb.color}50)`,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: focusedPhoto === orb.id
+                  ? `0 0 20px ${orb.color}, 0 4px 15px rgba(0,0,0,0.4)`
+                  : '0 4px 15px rgba(0,0,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: isMobile ? '1.2rem' : '1.4rem',
+                color: 'white',
+                fontWeight: 'bold',
+                transform: focusedPhoto === orb.id ? 'scale(1.1)' : 'scale(1)',
+              }}
+            >
+              {orb.id}
+            </button>
+          ))}
+          {focusedPhoto && (
+            <button
+              onClick={() => {
+                setFocusedPhoto(null)
+                photoFocusStore.setFocusedPhoto(null)
+              }}
+              style={{
+                width: isMobile ? '50px' : '56px',
+                height: isMobile ? '50px' : '56px',
+                borderRadius: '50%',
+                border: '2px solid rgba(255,255,255,0.5)',
+                background: 'linear-gradient(135deg, rgba(100,100,100,0.8), rgba(60,60,60,0.9))',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: isMobile ? '1rem' : '1.2rem',
+                color: 'white',
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
       <SceneContainer>
         <ArixTree />
         <PhotoOrnaments onSelectOrnament={setSelectedOrnament} />
@@ -187,86 +310,93 @@ function App() {
       </SceneContainer>
 
       {/* Photo Modal Overlay */}
-      {selectedOrnament && (
-        <div
-          onClick={() => setSelectedOrnament(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            background: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(10px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
+      {selectedOrnament && (() => {
+        const selectedOrb = orbs.find(o => o.id === selectedOrnament)
+        return (
           <div
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setSelectedOrnament(null)}
             style={{
-              background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.98))',
-              borderRadius: '24px',
-              padding: '40px',
-              maxWidth: '500px',
-              width: '90%',
-              textAlign: 'center',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255, 215, 0, 0.2)',
-              border: '1px solid rgba(255, 215, 0, 0.3)',
-            }}
-          >
-            <div style={{
-              width: '200px',
-              height: '200px',
-              margin: '0 auto 24px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff)',
+              position: 'fixed',
+              inset: 0,
+              zIndex: 100,
+              background: 'rgba(0, 0, 0, 0.9)',
+              backdropFilter: 'blur(15px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '4rem',
-              boxShadow: '0 0 40px rgba(255, 215, 0, 0.4)',
-            }}>
-              📸
-            </div>
-            <h2 style={{
-              color: 'gold',
-              fontFamily: 'serif',
-              fontSize: '1.8rem',
-              margin: '0 0 12px',
-            }}>
-              Memory #{selectedOrnament}
-            </h2>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: '1rem',
-              lineHeight: 1.6,
-              margin: '0 0 24px',
-            }}>
-              Add your photos to <code style={{ color: '#ffd93d' }}>src/assets/photos/</code> to display them here!
-            </p>
-            <button
-              onClick={() => setSelectedOrnament(null)}
+              cursor: 'pointer',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
               style={{
-                padding: '12px 32px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                border: 'none',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                background: 'linear-gradient(135deg, rgba(218, 165, 32, 0.9), rgba(184, 134, 11, 1))',
-                color: 'white',
-                boxShadow: '0 4px 20px rgba(218, 165, 32, 0.4)',
+                background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.98))',
+                borderRadius: '24px',
+                padding: '24px',
+                maxWidth: '90vw',
+                maxHeight: '90vh',
+                textAlign: 'center',
+                boxShadow: `0 20px 60px rgba(0,0,0,0.6), 0 0 50px ${selectedOrb?.color}40`,
+                border: `2px solid ${selectedOrb?.color}60`,
               }}
             >
-              Close
-            </button>
+              {selectedOrb?.photoUrl ? (
+                <img
+                  src={selectedOrb.photoUrl}
+                  alt={`Memory #${selectedOrnament}`}
+                  style={{
+                    maxWidth: '70vw',
+                    maxHeight: '70vh',
+                    borderRadius: '16px',
+                    objectFit: 'contain',
+                    boxShadow: `0 0 30px ${selectedOrb.color}50`,
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '200px',
+                  height: '200px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '4rem',
+                }}>
+                  📸
+                </div>
+              )}
+              <h2 style={{
+                color: selectedOrb?.color || 'gold',
+                fontFamily: 'serif',
+                fontSize: '1.5rem',
+                margin: '16px 0 8px',
+              }}>
+                Memory #{selectedOrnament}
+              </h2>
+              <button
+                onClick={() => setSelectedOrnament(null)}
+                style={{
+                  padding: '10px 28px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  background: `linear-gradient(135deg, ${selectedOrb?.color}cc, ${selectedOrb?.color})`,
+                  color: 'white',
+                  boxShadow: `0 4px 20px ${selectedOrb?.color}60`,
+                  marginTop: '12px',
+                }}
+              >
+                Close
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
 
 export default App
-

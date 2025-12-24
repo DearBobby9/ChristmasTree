@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
 import { OrbitControls, Environment } from '@react-three/drei'
 import { Suspense } from 'react'
+import { CameraController } from './CameraController'
 
 interface SceneContainerProps {
     children: React.ReactNode
@@ -28,6 +29,9 @@ export function SceneContainer({ children }: SceneContainerProps) {
 
                 {/* Environment - Cinematic / Luxury feel */}
                 <Environment preset="city" />
+
+                {/* Camera Controller for photo focus */}
+                <CameraController />
 
                 <Suspense fallback={null}>
                     {children}

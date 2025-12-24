@@ -9,6 +9,10 @@ import photo1 from '../assets/photos/1.JPG'
 import photo2 from '../assets/photos/2.JPG'
 import photo3 from '../assets/photos/3.png'
 import photo4 from '../assets/photos/4.jpg'
+import photo5 from '../assets/photos/5.jpg'
+import photo6 from '../assets/photos/6.jpg'
+import photo7 from '../assets/photos/7.jpg'
+import photo8 from '../assets/photos/8.jpg'
 
 const PARTICLES_PER_ORB = 400
 
@@ -100,13 +104,34 @@ interface OrbData {
     photoUrl: string | null
 }
 
-// 4 photo orbs orbiting at different heights with 90° spacing
-const orbs: OrbData[] = [
-    { id: 1, orbitRadius: 2.2, orbitHeight: 1.3, orbitPhase: 0, orbitSpeed: 0.3, color: '#ff6b9d', photoUrl: photo1 },
-    { id: 2, orbitRadius: 2.0, orbitHeight: 0.3, orbitPhase: Math.PI / 2, orbitSpeed: 0.25, color: '#ffd93d', photoUrl: photo2 },
-    { id: 3, orbitRadius: 2.3, orbitHeight: -0.8, orbitPhase: Math.PI, orbitSpeed: 0.35, color: '#6bcbff', photoUrl: photo3 },
-    { id: 4, orbitRadius: 2.1, orbitHeight: -1.8, orbitPhase: Math.PI * 3 / 2, orbitSpeed: 0.28, color: '#a78bfa', photoUrl: photo4 },
+// 8 photo orbs orbiting at different heights with 45° spacing
+// Heights evenly distributed from 2.4 to -2.4 to prevent overlap
+export const orbs: OrbData[] = [
+    { id: 1, orbitRadius: 2.2, orbitHeight: 2.4, orbitPhase: 0, orbitSpeed: 0.25, color: '#ff6b9d', photoUrl: photo1 },
+    { id: 2, orbitRadius: 2.0, orbitHeight: 1.7, orbitPhase: Math.PI / 4, orbitSpeed: 0.22, color: '#ffd93d', photoUrl: photo2 },
+    { id: 3, orbitRadius: 2.3, orbitHeight: 1.0, orbitPhase: Math.PI / 2, orbitSpeed: 0.28, color: '#6bcbff', photoUrl: photo3 },
+    { id: 4, orbitRadius: 2.1, orbitHeight: 0.3, orbitPhase: Math.PI * 3 / 4, orbitSpeed: 0.24, color: '#a78bfa', photoUrl: photo4 },
+    { id: 5, orbitRadius: 2.2, orbitHeight: -0.4, orbitPhase: Math.PI, orbitSpeed: 0.26, color: '#ff9f43', photoUrl: photo5 },
+    { id: 6, orbitRadius: 2.0, orbitHeight: -1.1, orbitPhase: Math.PI * 5 / 4, orbitSpeed: 0.23, color: '#34e89e', photoUrl: photo6 },
+    { id: 7, orbitRadius: 2.3, orbitHeight: -1.8, orbitPhase: Math.PI * 3 / 2, orbitSpeed: 0.27, color: '#ee5a5a', photoUrl: photo7 },
+    { id: 8, orbitRadius: 2.1, orbitHeight: -2.5, orbitPhase: Math.PI * 7 / 4, orbitSpeed: 0.21, color: '#54a0ff', photoUrl: photo8 },
 ]
+
+// Store for photo focus state
+export const photoFocusStore = {
+    focusedPhotoId: null as number | null,
+    photoPositions: {} as Record<number, THREE.Vector3>,
+    photoNormals: {} as Record<number, THREE.Vector3>,
+    setFocusedPhoto: (id: number | null) => {
+        photoFocusStore.focusedPhotoId = id
+    },
+    updatePosition: (id: number, position: THREE.Vector3) => {
+        photoFocusStore.photoPositions[id] = position.clone()
+    },
+    updateNormal: (id: number, normal: THREE.Vector3) => {
+        photoFocusStore.photoNormals[id] = normal.clone()
+    },
+}
 
 // Threshold for photo visibility (photos only show when morphProgress < this value)
 const PHOTO_SHOW_THRESHOLD = 0.6  // Increased from 0.35 for easier interaction
@@ -122,13 +147,35 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
     const pointsRef = useRef<THREE.Points>(null)
     const materialRef = useRef<THREE.ShaderMaterial>(null)
     const photoRef = useRef<THREE.Mesh>(null)
+    const bgRef = useRef<THREE.Mesh>(null)
     const frameRef = useRef<THREE.Mesh>(null)
     const morphProgress = useRef(1)
+    const outwardRef = useRef(new THREE.Vector3())
+    const lookAtRef = useRef(new THREE.Vector3())
     const [hovered, setHovered] = useState(false)
     useCursor(hovered && morphProgress.current < PHOTO_SHOW_THRESHOLD)
 
     // Load photo texture
     const texture = data.photoUrl ? useTexture(data.photoUrl) : null
+
+    // Calculate aspect ratio and dimensions
+    const MAX_WIDTH = 1.2
+    const MAX_HEIGHT = 0.9
+
+    let photoWidth = MAX_WIDTH
+    let photoHeight = MAX_HEIGHT
+
+    if (texture?.image) {
+        const img = texture.image as HTMLImageElement
+        const aspect = img.width / img.height
+        // Try fitting by width
+        photoHeight = MAX_WIDTH / aspect
+        if (photoHeight > MAX_HEIGHT) {
+            // Fit by height
+            photoHeight = MAX_HEIGHT
+            photoWidth = photoHeight * aspect
+        }
+    }
 
     // Generate particle positions
     const { spherePositions, scatterPositions } = useMemo(() => {
@@ -194,10 +241,29 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
         groupRef.current.position.y = orbitY * orbitFactor + scatterY * scatterFactor
         groupRef.current.position.z = orbitZ * orbitFactor + scatterZ * scatterFactor
 
+        // Report position to focus store
+        photoFocusStore.updatePosition(data.id, groupRef.current.position)
+
+        // Keep photo plane facing outward so "front" matches radial direction
+        if (photoRef.current && frameRef.current && bgRef.current) {
+            outwardRef.current.set(groupRef.current.position.x, 0, groupRef.current.position.z)
+            if (outwardRef.current.lengthSq() < 1e-6) {
+                outwardRef.current.set(0, 0, 1)
+            } else {
+                outwardRef.current.normalize()
+            }
+            lookAtRef.current.copy(groupRef.current.position).add(outwardRef.current)
+            photoRef.current.lookAt(lookAtRef.current)
+            frameRef.current.lookAt(lookAtRef.current)
+            bgRef.current.lookAt(lookAtRef.current)
+            photoFocusStore.updateNormal(data.id, outwardRef.current)
+        }
+
         // Photo plane visibility - ONLY show when scattered enough
-        if (photoRef.current && frameRef.current) {
+        if (photoRef.current && frameRef.current && bgRef.current) {
             const photoMaterial = photoRef.current.material as THREE.MeshBasicMaterial
             const frameMaterial = frameRef.current.material as THREE.MeshBasicMaterial
+            const bgMaterial = bgRef.current.material as THREE.MeshBasicMaterial
 
             // Calculate photo opacity with threshold
             let photoOpacity = 0
@@ -208,17 +274,22 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
             }
 
             photoMaterial.opacity = photoOpacity
+            bgMaterial.opacity = photoOpacity
             frameMaterial.opacity = photoOpacity * 0.3
 
             // Scale animation - grow from center
             const scale = 0.3 + photoOpacity * 0.7
             photoRef.current.scale.setScalar(scale)
+            bgRef.current.scale.setScalar(scale)
             frameRef.current.scale.set(scale * 1.15, scale * 1.15, 1)
 
             // Hide mesh entirely when formed
             photoRef.current.visible = morphProgress.current < PHOTO_FADE_START + 0.1
+            bgRef.current.visible = morphProgress.current < PHOTO_FADE_START + 0.1
             frameRef.current.visible = morphProgress.current < PHOTO_FADE_START + 0.1
         }
+
+        // Keep particles visible (don't hide them)
 
         // Subtle rotation when formed
         if (pointsRef.current && morphProgress.current > 0.5) {
@@ -258,9 +329,21 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
                 />
             </points>
 
-            {/* Glowing frame border (appears first) */}
-            <mesh ref={frameRef} visible={false}>
+            {/* Glowing frame border (appears first, positioned BEHIND photo to prevent z-fighting) */}
+            <mesh ref={frameRef} visible={false} position={[0, 0, -0.05]}>
                 <planeGeometry args={[1.4, 1.05]} />
+                <meshBasicMaterial
+                    color={data.color}
+                    transparent
+                    opacity={0}
+                    side={THREE.DoubleSide}
+                    depthWrite={false}
+                />
+            </mesh>
+
+            {/* Solid Background (fills the 4:3 box) */}
+            <mesh ref={bgRef} visible={false} position={[0, 0, -0.01]}>
+                <planeGeometry args={[1.2, 0.9]} />
                 <meshBasicMaterial
                     color={data.color}
                     transparent
@@ -273,6 +356,7 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
             <mesh
                 ref={photoRef}
                 visible={false}
+                position={[0, 0, 0.01]} // Slightly in front of bg
                 onClick={(e) => {
                     e.stopPropagation()
                     if (morphProgress.current < PHOTO_SHOW_THRESHOLD) {
@@ -285,7 +369,7 @@ function PhotoOrb({ data, onSelect }: PhotoOrbProps) {
                 }}
                 onPointerOut={() => setHovered(false)}
             >
-                <planeGeometry args={[1.2, 0.9]} />
+                <planeGeometry args={[photoWidth, photoHeight]} />
                 <meshBasicMaterial
                     map={texture}
                     color="#ffffff"

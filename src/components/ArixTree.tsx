@@ -121,6 +121,7 @@ const listeners: Set<Listener> = new Set()
 export const handTrackingStore = {
     _isTreeFormed: false,
     rotation: [0, 0] as [number, number],
+    manualOverrideUntil: 0,  // Timestamp until which hand tracking should be ignored
 
     get isTreeFormed() {
         return this._isTreeFormed
@@ -133,9 +134,31 @@ export const handTrackingStore = {
         }
     },
 
+    // Set manual override for a duration (in ms)
+    setManualOverride(durationMs: number = 2000) {
+        this.manualOverrideUntil = Date.now() + durationMs
+    },
+
+    // Check if manual override is active
+    isManualOverrideActive() {
+        return Date.now() < this.manualOverrideUntil
+    },
+
     subscribe(cb: Listener) {
         listeners.add(cb)
         return () => listeners.delete(cb)
+    },
+
+    // Hand tracking lock state
+    _isLocked: false,
+
+    get isLocked() {
+        return this._isLocked
+    },
+
+    toggleLock() {
+        this._isLocked = !this._isLocked
+        return this._isLocked
     }
 }
 

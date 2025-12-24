@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { HandLandmarker, FilesetResolver } from "@mediapipe/tasks-vision"
 import { handTrackingStore } from "./ArixTree"
+import { photoFocusStore } from "./PhotoOrnaments"
 
 interface HandTrackerProps { }
 
@@ -75,17 +76,33 @@ export function HandTracker({ }: HandTrackerProps) {
                         }
                         avgDist /= 4
 
-                        // DIRECTLY MUTATE the store (no React re-render!)
-                        if (avgDist < 0.3) {
-                            handTrackingStore.isTreeFormed = true
-                        } else if (avgDist > 0.45) {
-                            handTrackingStore.isTreeFormed = false
+                        // SKIP if manual override is active 
+                        // ALSO check Lock: 
+                        // If locked, we ONLY allow updates if the tree is currently FORMED (so we can scatter it?)
+                        // User requirement: "In condensed (formed) state, should NOT be affected by lock. Only in scattered state."
+                        // So:
+                        // If Formed: Lock ignored (always update) -> OK
+                        // If Scattered: Lock respected (if locked, don't update) -> OK
+
+                        // Condition: !override && (!locked || isTreeFormed)
+
+                        if (!handTrackingStore.isManualOverrideActive() && (!handTrackingStore.isLocked || handTrackingStore.isTreeFormed)) {
+                            // DIRECTLY MUTATE the store (no React re-render!)
+                            if (avgDist < 0.3) {
+                                handTrackingStore.isTreeFormed = true
+                            } else if (avgDist > 0.45) {
+                                handTrackingStore.isTreeFormed = false
+                            }
                         }
 
-                        // Rotation
-                        const x = (wrist.x - 0.5) * 2
-                        const y = (wrist.y - 0.5) * 2
-                        handTrackingStore.rotation = [x * 5, y * 5]
+                        // Rotation (always update, even during override)
+                        // Skip only if a photo is focused AND tree is not formed
+                        const focusedId = photoFocusStore.focusedPhotoId
+                        if (focusedId === null || handTrackingStore.isTreeFormed) {
+                            const x = (wrist.x - 0.5) * 2
+                            const y = (wrist.y - 0.5) * 2
+                            handTrackingStore.rotation = [x * 5, y * 5]
+                        }
                     }
                 }
             }
