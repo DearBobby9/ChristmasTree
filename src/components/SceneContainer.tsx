@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
-import { OrbitControls, Environment } from '@react-three/drei'
+import { OrbitControls } from '@react-three/drei'
 import { Suspense } from 'react'
 import { CameraController } from './CameraController'
 
@@ -27,8 +27,7 @@ export function SceneContainer({ children }: SceneContainerProps) {
                 <pointLight position={[0, 0, 0]} intensity={3} color="#FFE4B5" distance={8} decay={2} />
                 <pointLight position={[0, -2, 0]} intensity={2} color="#DAA520" distance={6} decay={2} />
 
-                {/* Environment - Cinematic / Luxury feel */}
-                <Environment preset="city" />
+                {/* Removed Environment to avoid external HDR dependency */}
 
                 {/* Camera Controller for photo focus */}
                 <CameraController />
