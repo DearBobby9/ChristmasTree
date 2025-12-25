@@ -27,15 +27,15 @@ function calculateTimeUntilChristmas(): TimeLeft {
 }
 
 function calculateTimeUntilNewYear(): TimeLeft {
-    const newYear2025 = new Date(2025, 0, 1) // Fixed: January 1, 2025
+    const newYear2026 = new Date(2026, 0, 1) // Fixed: January 1, 2026
     const now = new Date()
 
-    // If 2025 has already arrived or passed, return all zeros
-    if (now >= newYear2025) {
+    // If 2026 has already arrived or passed, return all zeros
+    if (now >= newYear2026) {
         return { days: 0, hours: 0, minutes: 0, seconds: 0 }
     }
 
-    const difference = newYear2025.getTime() - now.getTime()
+    const difference = newYear2026.getTime() - now.getTime()
 
     return {
         days: Math.floor(difference / (1000 * 60 * 60 * 24)),
